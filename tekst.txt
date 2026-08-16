@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Reselling Master</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:Inter,Arial,sans-serif;background:#f6f7f8;color:#17202a}
+header{background:#007782;color:white;padding:18px 24px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:2}
+header h1{margin:0;font-size:22px}.stats{display:flex;gap:22px;font-weight:700}.stats span{display:block;font-size:12px;font-weight:400;opacity:.85}
+main{max-width:1200px;margin:24px auto;padding:0 18px}.hero{background:white;border-radius:18px;padding:25px;box-shadow:0 2px 10px #0000000d;margin-bottom:18px}
+.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}.card,.deal{background:white;border-radius:15px;padding:18px;box-shadow:0 2px 10px #0000000a}
+.value{font-size:25px;font-weight:800;margin-top:7px}.green{color:#16833b}
+.deals{display:grid;grid-template-columns:repeat(5,1fr);gap:14px}.deal h3{font-size:16px;margin:12px 0 6px}.emoji{height:120px;border-radius:12px;background:#eef1f2;display:grid;place-items:center;font-size:58px}
+.row{display:flex;justify-content:space-between;margin:8px 0;font-size:13px}.btn{border:0;border-radius:9px;background:#007782;color:white;padding:11px 14px;font-weight:700;cursor:pointer;width:100%;margin-top:10px}.btn:disabled{opacity:.45;cursor:not-allowed}
+.notice{margin-top:18px;padding:14px;border-radius:12px;background:#e9f7f5}.log{margin-top:18px}.log p{padding:10px 0;border-bottom:1px solid #eee;margin:0}
+@media(max-width:900px){.cards{grid-template-columns:repeat(2,1fr)}.deals{grid-template-columns:repeat(2,1fr)}}@media(max-width:550px){.deals,.cards{grid-template-columns:1fr}.stats{gap:8px;font-size:13px}}
+.cat{border:1px solid #d8dddf;background:white;color:#17202a;border-radius:999px;padding:9px 16px;font-weight:700;cursor:pointer}.cat:hover,.cat.active{background:#007782;color:white;border-color:#007782}
+</style>
+</head>
+<body>
+<header><h1>🛍️ Reselling Master</h1><div class="stats">Dag <b id="day">1</b><div>€<b id="budget">100</b><span>budget</span></div><div><b id="stock">0</b><span>voorraad</span></div><div>€<b id="profit">0</b><span>winst</span></div></div></header>
+<main>
+<section class="hero"><h2>Welkom, reseller!</h2><p>Koop slimme deals, zet ze online en probeer zoveel mogelijk winst te maken.</p><div id="notice" class="notice">Je hebt €100 startbudget. Kies hieronder je eerste deal.</div></section>
+<section class="cards">
+<div class="card">Huidig budget<div class="value">€<span id="budget2">100</span></div></div>
+<div class="card">Items op voorraad<div class="value" id="stock2">0</div></div>
+<div class="card">Actieve listings<div class="value" id="listings">0</div></div>
+<div class="card">Totale winst<div class="value green">€<span id="profit2">0</span></div></div>
+</section>
+<div style="display:flex;gap:10px;align-items:center;margin:18px 0 12px">
+<input id="search" type="search" placeholder="🔎 Zoek een deal..." oninput="render()" style="flex:1;padding:13px 16px;border:1px solid #d8dddf;border-radius:12px;font-size:15px;outline:none;background:white">
+</div>
+<h2>Beschikbare deals</h2>
+<div id="categories" style="display:flex;gap:8px;flex-wrap:wrap;margin:0 0 16px">
+<button class="cat active" onclick="setCategory('alle',this)">Alles</button>
+<button class="cat" onclick="setCategory('sneakers',this)">👟 Sneakers</button>
+<button class="cat" onclick="setCategory('designer',this)">💎 Designer</button>
+<button class="cat" onclick="setCategory('kleding',this)">👕 Kleding</button>
+</div>
+<section class="deals" id="deals"></section>
+<button class="btn" style="max-width:320px;display:block;margin:18px auto" onclick="addListings(60);render()">➕ Meer listings laden</button>
+<div style="text-align:center;color:#69747a;font-size:13px">Er worden steeds nieuwe listings gegenereerd. Je kunt onbeperkt blijven laden.</div>
+<section class="card log"><h2>Activiteiten</h2><div id="log"><p>Nog geen transacties.</p></div></section>
+</main>
+<script>
+let budget=100,stock=0,profit=0,day=1,listings=0,category="alle";
+const deals=[
+["The North Face fleece","🧥",18,48,"kleding"],
+["Nike Air Force 1","👟",25,72,"sneakers"],
+["Carhartt beanie","🧢",8,25,"kleding"],
+["Vintage trenchcoat","🧥",35,135,"kleding"],
+["Adidas Campus","👟",22,65,"sneakers"],
+["New Balance 550","👟",30,85,"sneakers"],
+["Levi's 501","👖",15,45,"kleding"],
+["Ralph Lauren polo","👕",20,60,"designer"],
+["Lacoste polo","👕",24,70,"designer"],
+["Jordan 1 High","👟",55,140,"sneakers"],
+["Gucci riem","👜",45,120,"designer"]
+];
+let generatedCount=0;\naddListings(60);
+const namePools={
+ sneakers:[["Nike Dunk Low","👟",25,75],["Nike Air Max 1","👟",30,90],["Jordan 1 Mid","👟",40,110],["Adidas Samba","👟",28,80],["New Balance 2002R","👟",45,125],["Asics Gel-Kayano","👟",35,105]],
+ designer:[["Ralph Lauren quarter zip","🧥",25,75],["Lacoste sweater","👕",22,65],["Tommy Hilfiger jacket","🧥",30,85],["Calvin Klein hoodie","👕",20,60],["Coach bag","👜",45,120],["Armani polo","👕",35,95]],
+ kleding:[["Vintage Levi's jeans","👖",12,42],["Nike hoodie","👕",20,58],["Carhartt jacket","🧥",28,78],["The North Face vest","🧥",30,90],["Vintage knit sweater","🧶",10,38],["Dickies work pants","👖",16,48]]
+};
+function addListings(amount=30){
+ const cats=["sneakers","designer","kleding"];
+ for(let i=0;i<amount;i++){
+   const cat=cats[Math.floor(Math.random()*cats.length)];
+   const base=namePools[cat][Math.floor(Math.random()*namePools[cat].length)];
+   const variation=[""," Vintage"," Limited"," Clean"," Good condition"][Math.floor(Math.random()*5)];
+   const cost=Math.max(5,Math.round(base[2]*(0.8+Math.random()*0.45)));
+   const sale=Math.round(base[3]*(0.85+Math.random()*0.35));
+   deals.push([base[0]+variation,base[1],cost,sale,cat]);
+ }
+ generatedCount+=amount;
+}
+const el=id=>document.getElementById(id);
+function money(n){return n.toFixed(2).replace(".",",")}
+function render(){
+ if(deals.length<80) addListings(60);
+ el("budget").textContent=money(budget);el("budget2").textContent=money(budget);
+ el("stock").textContent=stock;el("stock2").textContent=stock;el("profit").textContent=money(profit);el("profit2").textContent=money(profit);
+ el("day").textContent=day;el("listings").textContent=listings;
+ const box=el("deals");box.innerHTML="";
+ const q=(el("search")?.value||"").toLowerCase().trim();
+ deals.forEach((d,i)=>{
+ if(q && !d[0].toLowerCase().includes(q)) return;let [name,emoji,cost,sale]=d;let p=Math.round(sale*0.88-cost);
+ box.innerHTML+=`<article class="deal"><div class="emoji">${emoji}</div><h3>${name}</h3>
+ <div class="row"><span>Inkoop</span><b>€${money(cost)}</b></div><div class="row"><span>Verkoop</span><b>± €${money(sale)}</b></div>
+ <div class="row"><span>Geschatte winst</span><b class="green">€${money(p)}</b></div>
+ <button class="btn" ${budget<cost?"disabled":""} onclick="buy(${i})">Deal kopen</button></article>`})
+}
+function log(t){el("log").innerHTML=`<p>${t}</p>`+el("log").innerHTML}
+function setCategory(c,btn){
+ category=c;
+ document.querySelectorAll(".cat").forEach(x=>x.classList.remove("active"));
+ btn.classList.add("active");
+ render();
+}
+function buy(i){
+ let [name,emoji,cost,sale]=deals[i];budget-=cost;stock++;listings++;
+ let finalSale=Math.round(sale*(.8+Math.random()*.4));
+ let chance=Math.random();
+ if(chance<.72){
+   let fee=finalSale*.08;let net=finalSale-fee;let gain=net-cost;
+   budget+=net;stock--;listings--;profit+=gain;
+   log(`✅ ${name} verkocht voor €${money(finalSale)}. Netto winst: €${money(gain)}.`);
+   el("notice").textContent=`Sterke deal! ${name} is verkocht.`;
+ }else{log(`📦 ${name} staat nu online. Geen koper vandaag.`);el("notice").textContent=`Je listing staat online. Misschien komt morgen de koper.`}
+ render()
+}
+render();
+</script>
+</body>
+</html>
